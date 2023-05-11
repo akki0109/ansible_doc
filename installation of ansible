@@ -1,0 +1,38 @@
+The best way to install Ansible for Ubuntu is to add the project's PPA (personal package archive) to your system. You also would need Boto framework for provisioning resources in AWS cloud.
+Update Repository by including the official project’s PPA
+/\/\/\/\\\\\\/\/\/\/\/\/\/\/\/\/\/\\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\\/\/\/\/\/\//\/\/\/\/\\//\/\/\//\//\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+sudo apt-get update
+sudo apt-add-repository -y ppa:ansible/ansible
+
+###################                 then you need to refresh the package by executing the below command:
+
+sudo apt-get update
+
+##############                       Now you can install Ansible:
+
+sudo apt-get install -y ansible
+
+sudo apt install python-pip -y
+
+
+##################                   Install Boto Framework - AWS SDK
+
+sudo pip install boto boto3
+
+#############                         Ansible will access AWS resources using boto SDK.
+
+sudo apt-get install python-boto -y
+
+pip list boto | grep boto
+
+$$$$$$$$$$$$$$$$$$$$$              (the above command should display below output)
+
+                                    Ignore warning in Red color.
+
+ansible --version
+
+
+
+===========================================================end =======================================================================================

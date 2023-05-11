@@ -1,0 +1,11 @@
+---
+- name: script execution
+  hosts: all
+  become: yes
+  tasks:
+  - name: Run a script using an executable in a system path
+    ansible.builtin.script: /home/ubuntu/hinder.py
+    ignore_errors: True
+    poll: 60
+    args:
+      executable: python3

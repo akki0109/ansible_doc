@@ -1,0 +1,15 @@
+---
+- name: Update Packages on target system
+  hosts: all
+  become: yes
+  tasks:
+  - name: Install ntpdate
+    ansible.builtin.package:
+      name: ntpdate
+      state: present
+
+  - name: Install the latest version of Apache and MariaDB
+    ansible.builtin.package:
+      name:
+        - mariadb-server
+      state: latest

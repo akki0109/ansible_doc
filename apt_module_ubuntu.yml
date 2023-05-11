@@ -1,0 +1,16 @@
+---
+- name: Update Package on debian system
+  hosts: all
+  become: yes
+  tasks:
+  - name: Run the equivalent of "apt-get update" as a separate step
+    apt:
+      update_cache: yes
+
+  - name: Install required Ubuntu packages
+    apt:
+     name: "{{ packages }}"
+     state: present
+    vars:
+      packages:
+        - openjdk-8-jdk

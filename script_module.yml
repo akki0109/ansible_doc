@@ -1,0 +1,9 @@
+---
+- name: script module
+  hosts: all
+  tasks:
+  -  name: Run a script with arguments (free form)
+     ansible.builtin.script: /some/local/script.sh --some-argument 1234
+  -  name: Run a script with arguments (using 'cmd' parameter)
+     ansible.builtin.script:
+       cmd: /some/local/script.sh --some-argument 1234

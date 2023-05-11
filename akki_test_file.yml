@@ -1,0 +1,9 @@
+---
+- name: my test playbook
+  hosts: all
+  become: yes
+  tasks:
+  - name: creating a file 
+    file:
+      path: /home/ubuntu/lightupfile
+      state: touch

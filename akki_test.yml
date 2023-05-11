@@ -1,0 +1,7 @@
+---
+- name: my test playbook
+  hosts: all
+  become: yes
+  tasks:
+  - name: creating user for all node
+    user: name=suyash

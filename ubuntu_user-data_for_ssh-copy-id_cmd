@@ -1,0 +1,30 @@
+#!/bin/bash
+apt update 
+
+echo '#!/usr/bin/python3' > /home/ubuntu/akki.py
+cat << 'EOF' >> /home/ubuntu/akki.py
+search_text = "PasswordAuthentication no"
+replace_text = "PasswordAuthentication yes"
+with open(r'/etc/ssh/sshd_config', 'r') as file:
+    data = file.read()
+data = data.replace(search_text, replace_text)
+with open(r'/etc/ssh/sshd_config', 'w') as file:  
+    file.write(data)
+EOF
+
+python3 /home/ubuntu/akki.py
+service ssh restart
+printf 'Akki\nAkki\n' | passwd ubuntu
+rm -rf akki.py
+
+##????????????????????????????????????????????????  above script is used in user data while launching instance ????????????????????/??????????????????
+
+# now we have to need private ips of each instance suppose 1000 of instance ,we can not manually note it show here is the command which will need aws cli
+#to execte it   with one command we will get list of private ips through it in a file called ###private ips.txt.
+
+aws ec2 describe-instances  --filters "Name=tag:Name,Values=we_done_it"  --query 'Reservations[].Instances[].PrivateIpAddress' --output text > private_ips.txt
+
+#below command will directly show output in terminal.
+aws ec2 describe-instances --filters "Name=tag:Name,Values=we_done_it"  --query 'Reservations[].Instances[].PrivateIpAddress' --output text
+
+##we can also get public ips by replacing PrivateIpAddress  to PublicIpAddress..........

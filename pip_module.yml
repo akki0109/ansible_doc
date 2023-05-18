@@ -1,13 +1,39 @@
+#---
+#- name: Update python packages
+#  hosts: all
+#  become: yes
+#  tasks:
+#  - name: Install multi python packages with version specifiers
+#    pip:
+#      name:
+#        - django>1.11.0,<1.12.0
+#        - bottle>0.10,<0.20,!=0.11
+#  - name: Install specified python requirements
+#    pip:
+#      requirements: /my_app/requirements.txt
 ---
-- name: Update python packages
+- name: Install Django
   hosts: all
-  become: yes
+  become: true
+
   tasks:
-  - name: Install multi python packages with version specifiers
-    pip:
-      name:
-        - django>1.11.0,<1.12.0
-        - bottle>0.10,<0.20,!=0.11
-  - name: Install specified python requirements
-    pip:
-      requirements: /my_app/requirements.txt
+    - name: Update apt cache (for Debian/Ubuntu)
+      apt:
+        update_cache: yes
+      when: ansible_os_family == 'Ubuntu'
+
+    - name: Install Python development packages
+      package:
+        name: python3-dev
+        state: present
+
+    - name: Install Pip package manager
+      package:
+        name: python3-pip
+        state: present
+
+    - name: Install Django
+      pip:
+        name: django
+        state: present
+

@@ -1,0 +1,68 @@
+---
+- name: Install Docker on Ubuntu
+  hosts: all
+  gather_facts: True
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Docker dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Add Docker GPG key
+      shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+      become: true
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+        state: present
+
+    - name: Update apt cache again
+      apt:
+        update_cache: yes
+
+    - name: Check Docker package policy
+      command: apt-cache policy docker-ce
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Add user to the docker group
+      user:
+        name: "{{ ansible_env.USER }}"
+        groups: docker
+        append: yes
+      become: true
+      tags:
+        - docker
+
+    - name: Copy project to instance
+      copy:
+        src: /home/ubuntu/jai
+        dest: /home/ubuntu/
+      tags:
+        - project
+
+    - name: Build Docker image
+      command: docker build -t akki /home/ubuntu/jai/
+      args:
+        chdir: /home/ubuntu/jai/
+      tags:
+        - docker
+
+    - name: Run Docker container
+      command: docker run -d --name suyash -p 80:80 akki
+      tags:
+        - docker

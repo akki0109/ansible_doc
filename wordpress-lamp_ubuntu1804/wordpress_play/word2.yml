@@ -70,4 +70,4 @@
       timeout: 120
 
     - name: Run Another Playbook
-      command: ansible-playbook /home/ubuntu/playbook.yml
+      command: ansible-playbook /home/ubuntu/ansible_doc/wordpress-lamp_ubuntu1804/wordpress_play/playbook.yml

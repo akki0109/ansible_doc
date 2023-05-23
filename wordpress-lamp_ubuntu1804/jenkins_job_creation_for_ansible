@@ -1,0 +1,35 @@
+by creating newjob  choose freestyle project 
+----------------------------------------------------------------
+click on build environment option from left side of page
+
+then click on { Use secret text(s) or file(s) }  
+
+click on add
+
+click on {  SSH User Private Key  }  option
+ 
+give name PRIVATE_KEY_FILE   in {Key File Variable} option
+
+now unser credential option choose add
+
+choose jenkins
+
+under {kind} option choose ssh with private key
+
+under {Private Key} option choose enter directly
+
+then click add and paste content of your pem file in box
+
+and then click on add
+
+------------------------------------------------------------------------------------
+now under {build step} choose excute shell
+
+then put below command in it  dont forget to change path according to your playbook path..
+
+chmod 400 ${PRIVATE_KEY_FILE}
+
+ssh -i "${PRIVATE_KEY_FILE}" -o StrictHostKeyChecking=no ubuntu@ec2-3-131-133-87.us-east-2.compute.amazonaws.com "ansible-playbook  /home/ubuntu/ansible_doc/wordpress-lamp_ubuntu1804/wordpress_play/word2.yml"
+
+
+

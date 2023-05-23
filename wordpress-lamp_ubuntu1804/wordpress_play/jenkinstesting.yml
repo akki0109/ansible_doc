@@ -1,0 +1,78 @@
+---
+- name: Launch EC2 instance
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    region: us-east-2
+    image: ami-0a695f0d95cefc163
+    instance_type: t2.micro
+    key_name: test
+    security_groups: launch-wizard-5
+    subnet_id: subnet-0327c84b4858fa0ac
+    user_data_script: |
+      #!/bin/bash
+      apt update
+      echo '#!/usr/bin/python3' > /home/ubuntu/akki.py
+      cat << 'EOF' >> /home/ubuntu/akki.py
+      search_text = "PasswordAuthentication no"
+      replace_text = "PasswordAuthentication yes"
+      with open(r'/etc/ssh/sshd_config', 'r') as file:
+          data = file.read()
+      data = data.replace(search_text, replace_text)
+      with open(r'/etc/ssh/sshd_config', 'w') as file:
+          file.write(data)
+      EOF
+
+      python3 /home/ubuntu/akki.py
+      service ssh restart
+      rm -rf /home/ubuntu/akki.py
+      printf 'Akki\nAkki\n' | passwd ubuntu
+
+  tasks:
+    - name: Launch EC2 instance
+      ec2_instance:
+        key_name: "{{ key_name }}"
+        region: "{{ region }}"
+        instance_type: "{{ instance_type }}"
+        security_groups: "{{ security_groups }}"
+        image_id: "{{ image }}"
+        user_data: "{{ user_data_script }}"
+        wait: yes
+        tags:
+          Name: jenkinstest
+        vpc_subnet_id: "{{ subnet_id }}"
+      register: ec2_instance
+      tags: [jenkinstest]
+
+    - name: Delay for 100 seconds
+      pause:
+        seconds: 10
+      tags: [jenkinstest]
+
+    - name: Add the EC2 instance to the webservers group in the hosts file
+      lineinfile:
+        path: /etc/ansible/hosts
+        line: "{{ ec2_instance.instances[0].private_ip_address }}"
+        insertafter: '# [webservers]'
+      become: yes
+      become_user: root
+      tags: [jenkinstest]
+
+- name: Run command on Ansible control host
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Get the first IP address from webservers group
+      shell: awk '/\[webservers\]/{flag=1; next} /^\s*\[/{flag=0} flag{print $1; exit}' /etc/ansible/hosts
+      register: first_ip_address
+      tags: [jenkinstest]
+
+    - name: Execute command on Ansible control host
+      expect:
+        command: ssh-copy-id -o StrictHostKeyChecking=no  ubuntu@{{ first_ip_address.stdout }}
+        responses:
+          Password for ubuntu@{{ first_ip_address.stdout }}:
+            - Akki
+        timeout: 60  # Increase the timeout value to 60 seconds or adjust as needed
+      tags: [jenkinstest]

@@ -1,0 +1,126 @@
+It's best practice to keep sensitive information, such as access tokens, in a secure and separate location.
+You can use Ansible's vault feature to encrypt and store sensitive data securely.
+To use Ansible vault, you can create an encrypted file that stores your access token, 
+and then reference that encrypted file in your playbook. Here's an example:
+----------Create an encrypted file to store the access token. Run the following command and provide a password when prompted:----------------------
+
+ansible-vault create secrets.yml
+
+---------------------------------------------now put below content in it (in place of   YOUR_GIT_ACCESS_TOKEN  put your acces token )
+git_access_token: YOUR_GIT_ACCESS_TOKEN
+
+-----------------------here is playbook you need make some changes------------------------------------------------------------------
+
+---
+- name: Deploy .NET website on AWS EC2
+  hosts: all
+  become: true
+  vars:
+    dotnet_version: "5.0"
+    app_name: "my-dotnet-app"
+    app_publish_dir: "/var/www/{{ app_name }}"
+    app_git_repo: "https://github.com/example/my-dotnet-app.git"
+    git_access_token: "{{ vault_git_access_token }}"
+
+  tasks:
+    - name: Install .NET SDK
+      apt:
+        name: apt-transport-https software-properties-common
+        state: present
+
+    - name: Add Microsoft package signing key
+      apt_key:
+        url: https://packages.microsoft.com/keys/microsoft.asc
+        state: present
+
+    - name: Add Microsoft package repository
+      apt_repository:
+        repo: deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-focal-prod focal main
+        state: present
+
+    - name: Install .NET SDK and runtime
+      apt:
+        name: dotnet-sdk-{{ dotnet_version }} aspnetcore-runtime-{{ dotnet_version }}
+        state: present
+
+    - name: Clone or update the application repository
+      git:
+        repo: "{{ app_git_repo }}"
+        dest: "{{ app_publish_dir }}"
+        version: master
+        update: yes
+        accept_hostkey: yes
+        extra:
+          access_token: "{{ git_access_token }}"
+
+    - name: Build and publish .NET application
+      shell: dotnet publish -c Release -o {{ app_publish_dir }}/app
+      args:
+        chdir: "{{ app_publish_dir }}"
+
+    - name: Create systemd service for .NET application
+      template:
+        src: templates/dotnet-app.service.j2
+        dest: /etc/systemd/system/{{ app_name }}.service
+
+    - name: Start the .NET application service
+      systemd:
+        name: "{{ app_name }}"
+        state: started
+        enabled: yes
+
+----------------------------------now after making changes create folder templates in root where playbook is 
+kept and inside it create a jinja file named ( dotnet-app.service.j2) and put below content----------------------------------------------------
+
+
+[Unit]
+Description={{ app_name }} .NET application
+
+[Service]
+WorkingDirectory={{ app_publish_dir }}/app
+ExecStart=/usr/bin/dotnet {{ app_publish_dir }}/app/YourAppName.dll
+Restart=always
+# Restart service after 10 seconds if the dotnet service crashes:
+RestartSec=10
+SyslogIdentifier={{ app_name }}
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+[Install]
+WantedBy=multi-user.target
+
+
+----------below tree defines the structure of project-------------------------------------------------------------------------------------
+
+├── deploy-dotnet-website.yml
+├── inventory.yml
+└── templates
+    └── dotnet-app.service.j2
+    
+    
+note:- if we define ip of instance in hosts file no need to create inventory file
+
+---------------------------------------------------while running playbook rember to  decrypt secrets.yml by
+below command and after playbook completion again encrypt secrets.yml ------------------------------------------------------------
+
+ansible-vault decrypt secrets.yml
+
+ansible-vault encrypt secrets.yml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

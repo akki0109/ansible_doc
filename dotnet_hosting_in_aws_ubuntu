@@ -2,6 +2,8 @@ It's best practice to keep sensitive information, such as access tokens, in a se
 You can use Ansible's vault feature to encrypt and store sensitive data securely.
 To use Ansible vault, you can create an encrypted file that stores your access token, 
 and then reference that encrypted file in your playbook. Here's an example:
+
+
 ----------Create an encrypted file to store the access token. Run the following command and provide a password when prompted:----------------------
 
 ansible-vault create secrets.yml

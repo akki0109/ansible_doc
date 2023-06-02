@@ -1,0 +1,107 @@
+---
+- name: Deploy .NET website on Amazon Linux with Apache
+  hosts: all
+  become: true
+  vars:
+    app_name: "helloapp"
+    app_publish_dir: "/var/www/{{ app_name }}"
+    app_git_repo: "https://{{ vault_data.vault_git_access_token }}@github.com/akki0109/helloapp.git"
+    ansible_user: ec2-user
+  tasks:
+    - name: Load vault token
+      include_vars:
+        file: "/home/ubuntu/secrets.yml"
+        name: vault_data
+
+    - name: Install .NET SDK
+      yum:
+        name: dotnet-sdk-6.0
+        state: present
+
+    - name: Install ASP.NET Core runtime
+      yum:
+        name: aspnetcore-runtime-6.0
+        state: present
+
+    - name: Install .NET runtime
+      yum:
+        name: dotnet-runtime-6.0
+        state: present
+
+    - name: Install Apache web server
+      yum:
+        name: httpd
+        state: present
+
+    - name: Install Git
+      yum:
+        name: git
+        state: present
+
+    - name: Start Apache service
+      service:
+        name: httpd
+        state: started
+        enabled: true
+
+    - name: Clone or update the application repository
+      git:
+        repo: "{{ app_git_repo }}"
+        dest: "{{ app_publish_dir }}"
+        version: main  # Replace "main" with the branch name that exists in your repository
+        update: yes
+        accept_hostkey: yes
+
+    - name: Set permissions for the application directory
+      file:
+        path: "{{ app_publish_dir }}"
+        owner: apache
+        group: apache
+        recurse: yes
+        state: directory
+        mode: "2775"
+
+    - name: Set permissions for directories
+      file:
+        path: "{{ app_publish_dir }}"
+        owner: apache
+        group: apache
+        recurse: yes
+        state: directory
+        mode: "2775"
+
+    - name: Set permissions for files
+      find:
+        paths: "{{ app_publish_dir }}"
+        file_type: file
+        recurse: yes
+      register: files_to_set_permissions
+
+    - name: Set permissions for files
+      file:
+        path: "{{ item.path }}"
+        owner: apache
+        group: apache
+        mode: "0664"
+      loop: "{{ files_to_set_permissions.files }}"
+
+    - name: Configure Apache for the application
+      template:
+        src: templates/apache-site.conf.j2
+        dest: /etc/httpd/conf.d/{{ app_name }}.conf
+
+    - name: Restart Apache service
+      service:
+        name: httpd
+        state: restarted
+
+    - name: Configure Kestrel for the application
+      template:
+        src: templates/kestrel-service.conf.j2
+        dest: /etc/systemd/system/kestrel-{{ app_name }}.service
+
+    - name: Enable Kestrel service
+      command: systemctl start kestrel-{{ app_name }}.service
+      become: true
+
+

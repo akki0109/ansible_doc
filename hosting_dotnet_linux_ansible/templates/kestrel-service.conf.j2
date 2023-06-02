@@ -1,0 +1,16 @@
+[Unit]
+Description=Example .NET Web API App running on CentOS 7
+
+[Service]
+WorkingDirectory=/var/www/helloapp                                             
+ExecStart=/usr/bin/dotnet /var/www/helloapp/net6.0/TestingApp.dll                 
+Restart=always                                                                 
+# Restart service after 10 seconds if the dotnet service crashes:                 ##you can check dotnet location by command   "which dotnet"
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=dotnet-example
+User=apache
+Environment=ASPNETCORE_ENVIRONMENT=Production 
+
+[Install]
+WantedBy=multi-user.target

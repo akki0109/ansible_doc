@@ -9,70 +9,143 @@ and then reference that encrypted file in your playbook. Here's an example:
 ansible-vault create secrets.yml
 
 ---------------------------------------------now put below content in it (in place of   YOUR_GIT_ACCESS_TOKEN  put your acces token )
-git_access_token: YOUR_GIT_ACCESS_TOKEN
+vault_git_access_token: YOUR_GIT_ACCESS_TOKEN
 
 -----------------------here is playbook you need make some changes------------------------------------------------------------------
 
 ---
-- name: Deploy .NET website on AWS EC2
+- name: Deploy .NET website on Amazon Linux with Apache
   hosts: all
   become: true
   vars:
-    dotnet_version: "5.0"
-    app_name: "my-dotnet-app"
+    app_name: "helloapp"
     app_publish_dir: "/var/www/{{ app_name }}"
-    app_git_repo: "https://github.com/example/my-dotnet-app.git"
-    git_access_token: "{{ vault_git_access_token }}"
-
+    app_git_repo: "https://{{ vault_data.vault_git_access_token }}@github.com/akki0109/helloapp.git"
+    ansible_user: ec2-user
   tasks:
+    - name: Load vault token
+      include_vars:
+        file: "/home/ubuntu/secrets.yml"
+        name: vault_data
+
     - name: Install .NET SDK
-      apt:
-        name: apt-transport-https software-properties-common
+      yum:
+        name: dotnet-sdk-6.0
         state: present
 
-    - name: Add Microsoft package signing key
-      apt_key:
-        url: https://packages.microsoft.com/keys/microsoft.asc
+    - name: Install ASP.NET Core runtime
+      yum:
+        name: aspnetcore-runtime-6.0
         state: present
 
-    - name: Add Microsoft package repository
-      apt_repository:
-        repo: deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-focal-prod focal main
+    - name: Install .NET runtime
+      yum:
+        name: dotnet-runtime-6.0
         state: present
 
-    - name: Install .NET SDK and runtime
-      apt:
-        name: dotnet-sdk-{{ dotnet_version }} aspnetcore-runtime-{{ dotnet_version }}
+    - name: Install Apache web server
+      yum:
+        name: httpd
         state: present
+
+    - name: Install Git
+      yum:
+        name: git
+        state: present
+
+    - name: Start Apache service
+      service:
+        name: httpd
+        state: started
+        enabled: true
 
     - name: Clone or update the application repository
       git:
         repo: "{{ app_git_repo }}"
         dest: "{{ app_publish_dir }}"
-        version: master
+        version: main  # Replace "main" with the branch name that exists in your repository
         update: yes
         accept_hostkey: yes
-        extra:
-          access_token: "{{ git_access_token }}"
 
-    - name: Build and publish .NET application
-      shell: dotnet publish -c Release -o {{ app_publish_dir }}/app
-      args:
-        chdir: "{{ app_publish_dir }}"
+    - name: Set permissions for the application directory
+      file:
+        path: "{{ app_publish_dir }}"
+        owner: apache
+        group: apache
+        recurse: yes
+        state: directory
+        mode: "2775"
 
-    - name: Create systemd service for .NET application
+    - name: Set permissions for directories
+      file:
+        path: "{{ app_publish_dir }}"
+        owner: apache
+        group: apache
+        recurse: yes
+        state: directory
+        mode: "2775"
+
+    - name: Set permissions for files
+      find:
+        paths: "{{ app_publish_dir }}"
+        file_type: file
+        recurse: yes
+      register: files_to_set_permissions
+
+    - name: Set permissions for files
+      file:
+        path: "{{ item.path }}"
+        owner: apache
+        group: apache
+        mode: "0664"
+      loop: "{{ files_to_set_permissions.files }}"
+
+    - name: Configure Apache for the application
       template:
-        src: templates/dotnet-app.service.j2
-        dest: /etc/systemd/system/{{ app_name }}.service
+        src: templates/apache-site.conf.j2
+        dest: /etc/httpd/conf.d/{{ app_name }}.conf
 
-    - name: Start the .NET application service
-      systemd:
-        name: "{{ app_name }}"
-        state: started
-        enabled: yes
+    - name: Restart Apache service
+      service:
+        name: httpd
+        state: restarted
+
+    - name: Configure Kestrel for the application
+      template:
+        src: templates/kestrel-service.conf.j2
+        dest: /etc/systemd/system/kestrel-{{ app_name }}.service
+
+    - name: Enable Kestrel service
+      command: systemctl start kestrel-{{ app_name }}.service
+      become: true
+
+
+
+
+----------------------------------------inside template folder create a file name (  apache-site.conf.j2  )  and put below content------------------
+
+
+
+
+<VirtualHost *:*>
+    RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}s
+</VirtualHost>
+
+<VirtualHost *:80>
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:5000/
+    ProxyPassReverse / http://127.0.0.1:5000/
+    ServerName {{ app_name }}
+    ServerAlias *.{{ app_name }}
+</VirtualHost>
+
+
+
+
+
 
 ----------------------------------now after making changes create folder templates in root where playbook is 
-kept and inside it create a jinja file named ( dotnet-app.service.j2) and put below content----------------------------------------------------
+kept and inside it create a jinja file named ( kestrel-service.conf.j2) and put below content----------------------------------------------------
 
 
 [Unit]
@@ -98,7 +171,8 @@ WantedBy=multi-user.target
 ├── deploy-dotnet-website.yml
 ├── inventory.yml
 └── templates
-    └── dotnet-app.service.j2
+    └── kestrel-service.conf.j2
+    |__ apache-site.conf.j2
     
     
 note:- if we define ip of instance in hosts file no need to create inventory file

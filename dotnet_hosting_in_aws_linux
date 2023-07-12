@@ -8,6 +8,13 @@ and then reference that encrypted file in your playbook. Here's an example:
 
 ansible-vault create secrets.yml
 
+--------------------for automation you dont need to give password of vault manually ---------------------------------------------------------------
+
+ansible-vault encrypt --vault-password-file=akki  secrests.yml
+
+===where akki is vault password file and secrests.yml is a file which we are encrypting
+
+
 ---------------------------------------------now put below content in it (in place of   YOUR_GIT_ACCESS_TOKEN  put your acces token )
 vault_git_access_token: YOUR_GIT_ACCESS_TOKEN
 

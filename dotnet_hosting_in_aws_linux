@@ -12,6 +12,8 @@ ansible-vault create secrets.yml
 
 ansible-vault encrypt --vault-password-file=akki  secrests.yml
 
+ansible-vault decrypt --vault-password-file=akki  secrests.yml
+
 ===where akki is vault password file and secrests.yml is a file which we are encrypting
 
 

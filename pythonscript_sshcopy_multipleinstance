@@ -1,0 +1,55 @@
+import boto3
+import paramiko
+
+# AWS credentials
+aws_access_key_id = 'EIFINDNDFDNKSIKDSFSDF'
+aws_secret_access_key = 'ru4dsdskdskdsdhsdsdisjdisdsdt'
+region_name = 'us-east-2'
+
+# Path to your local private key file
+private_key_file = '/home/akash/Desktop/kublet.pem'
+
+# Path to your SSH public key file
+ssh_public_key_file = '/home/akash/.ssh/id_rsa.pub'
+
+# Read the SSH public key content
+with open(ssh_public_key_file, 'r') as f:
+    ssh_public_key = f.read()
+
+# Create a Boto3 EC2 client
+ec2_client = boto3.client('ec2', aws_access_key_id=aws_access_key_id,
+                           aws_secret_access_key=aws_secret_access_key,
+                           region_name=region_name)
+
+# Get a list of all instances
+response = ec2_client.describe_instances()
+
+# Copy SSH public key to each instance
+for reservation in response['Reservations']:
+    for instance in reservation['Instances']:
+        instance_id = instance['InstanceId']
+        instance_state = instance['State']['Name']
+        print(f"Instance {instance_id} is in state: {instance_state}")
+
+        if instance_state == 'running':
+            print(f"Copying SSH public key to instance: {instance_id}")
+
+            try:
+                # SSH into the instance using the kublet private key file
+                ssh_client = paramiko.SSHClient()
+                ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh_client.connect(instance['PublicIpAddress'], username='ubuntu', key_filename=private_key_file)
+                print(f"Connected to instance {instance_id}")
+
+                # Copy SSH public key to authorized_keys file
+                stdin, stdout, stderr = ssh_client.exec_command(f"echo '{ssh_public_key}' >> ~/.ssh/authorized_keys")
+                print(f"stdout: {stdout.read().decode()}")
+                print(f"stderr: {stderr.read().decode()}")
+
+                # Close the SSH connection
+                ssh_client.close()
+            except Exception as e:
+                print(f"Failed to copy SSH public key to instance {instance_id}: {e}")
+        else:
+            print(f"Skipping instance {instance_id} as it is not in a valid state for sending commands.")
+
